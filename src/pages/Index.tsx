@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import { toast } from "sonner";
 import WorkoutCamera from "@/components/WorkoutCamera";
 import { getIdealScore, evaluatePerformance, getRandomEmailTemplate } from "@/utils/workoutData";
+import { supabase } from "@/integrations/supabase/client";
 import HeroSection from "@/components/HeroSection";
 import FitnessForm from "@/components/FitnessForm";
 import SuccessView from "@/components/SuccessView";
@@ -57,7 +59,7 @@ const Index = () => {
     setShowCamera(true);
   };
 
-  const handleWorkoutComplete = (repCount: number, plankDuration: number) => {
+  const handleWorkoutComplete = async (repCount: number, plankDuration: number) => {
     setWorkoutResults({ repCount, plankDuration });
     
     const age = parseInt(formData.age);
@@ -68,8 +70,39 @@ const Index = () => {
     const performance = evaluatePerformance(score, idealScore);
     const emailTemplate = getRandomEmailTemplate(performance, formData.name);
     
-    const extra = Math.max(0, score - idealScore);
-    
+    // Save to Supabase
+    try {
+      const { error } = await supabase
+        .from('fitness_submissions')
+        .insert({
+          name: formData.name,
+          age: parseInt(formData.age),
+          gender: formData.gender,
+          email: formData.email,
+          phone_number: formData.phoneNumber || null,
+          height: formData.height || null,
+          weight: formData.weight || null,
+          workout_choice: formData.workoutChoice,
+          experience: formData.experience,
+          rep_count: workoutType === 4 ? 0 : repCount,
+          plank_duration: workoutType === 4 ? plankDuration : 0,
+          score: score,
+          performance_rating: performance
+        });
+
+      if (error) {
+        console.error('Error saving to database:', error);
+        toast.error('Failed to save workout data. Please try again.');
+        return;
+      }
+
+      console.log('Data saved to Supabase successfully');
+    } catch (error) {
+      console.error('Error saving to database:', error);
+      toast.error('Failed to save workout data. Please try again.');
+      return;
+    }
+
     // Show workout results
     toast.success(`🎉 Workout completed! ${workoutType === 4 ? `Plank Duration: ${plankDuration.toFixed(1)}s` : `Total Reps: ${repCount}`}`, {
       duration: 4000,
@@ -109,28 +142,68 @@ const Index = () => {
     return workoutMap[workoutChoice] || 1;
   };
 
-  const pickWinner = (e: React.MouseEvent) => {
-    const workouts = ['Bicep Curls', 'Squats', 'Pushups', 'Plank'];
-    const randomWorkout = workouts[Math.floor(Math.random() * workouts.length)];
-    
-    // Add to winners list
-    setWinners(prev => [...prev, randomWorkout]);
-    
-    // Create celebration emojis
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
-    const newEmojis = Array.from({length: 8}, (_, i) => ({
-      id: Date.now() + i,
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2
-    }));
-    
-    setCelebrationEmojis(newEmojis);
-    
-    // Remove emojis after animation
-    setTimeout(() => setCelebrationEmojis([]), 2000);
-    
-    // Show winners dialog
-    setShowWinnersDialog(true);
+  const pickWinner = async (e: React.MouseEvent) => {
+    try {
+      // Call the Supabase function to get a random winner
+      const { data, error } = await supabase.rpc('get_random_winner');
+      
+      if (error) {
+        console.error('Error getting winner:', error);
+        toast.error('Failed to pick winner. Please try again.');
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        toast.info('No participants found for today. Complete a workout first!', {
+          duration: 3000,
+          style: {
+            background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+            color: 'white',
+            border: 'none',
+            fontSize: '16px',
+            fontWeight: '600'
+          }
+        });
+        return;
+      }
+
+      const winner = data[0];
+      const winnerText = `${winner.winner_name} - ${winner.winner_workout} (Score: ${winner.winner_score})`;
+      
+      // Add to winners list
+      setWinners(prev => [...prev, winnerText]);
+      
+      // Show winner announcement
+      toast.success(`🎊 Winner: ${winner.winner_name}! Workout: ${winner.winner_workout}`, {
+        duration: 4000,
+        style: {
+          background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+          color: 'white',
+          border: 'none',
+          fontSize: '16px',
+          fontWeight: '600'
+        }
+      });
+      
+      // Create celebration emojis
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      const newEmojis = Array.from({length: 8}, (_, i) => ({
+        id: Date.now() + i,
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      }));
+      
+      setCelebrationEmojis(newEmojis);
+      
+      // Remove emojis after animation
+      setTimeout(() => setCelebrationEmojis([]), 2000);
+      
+      // Show winners dialog
+      setShowWinnersDialog(true);
+    } catch (error) {
+      console.error('Error picking winner:', error);
+      toast.error('Failed to pick winner. Please try again.');
+    }
   };
 
   if (isSubmitted) {

@@ -9,13 +9,80 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      fitness_submissions: {
+        Row: {
+          age: number
+          created_at: string
+          email: string
+          experience: string
+          gender: string
+          height: string | null
+          id: string
+          name: string
+          performance_rating: string | null
+          phone_number: string | null
+          plank_duration: number | null
+          rep_count: number | null
+          score: number | null
+          submission_date: string
+          updated_at: string
+          weight: string | null
+          workout_choice: string
+        }
+        Insert: {
+          age: number
+          created_at?: string
+          email: string
+          experience: string
+          gender: string
+          height?: string | null
+          id?: string
+          name: string
+          performance_rating?: string | null
+          phone_number?: string | null
+          plank_duration?: number | null
+          rep_count?: number | null
+          score?: number | null
+          submission_date?: string
+          updated_at?: string
+          weight?: string | null
+          workout_choice: string
+        }
+        Update: {
+          age?: number
+          created_at?: string
+          email?: string
+          experience?: string
+          gender?: string
+          height?: string | null
+          id?: string
+          name?: string
+          performance_rating?: string | null
+          phone_number?: string | null
+          plank_duration?: number | null
+          rep_count?: number | null
+          score?: number | null
+          submission_date?: string
+          updated_at?: string
+          weight?: string | null
+          workout_choice?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_random_winner: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          winner_name: string
+          winner_workout: string
+          winner_score: number
+          total_participants: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
